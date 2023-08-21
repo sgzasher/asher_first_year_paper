@@ -590,7 +590,10 @@ df.export <-
     df.1617
   )
 
-write.csv(
+write.table(
   df.export,
-  "../../data/output/built/cdd_controls.csv"
+  "../../data/output/built/cdd_controls.csv",
+  append = FALSE,
+  row.names = FALSE,
+  sep = ","
 )
