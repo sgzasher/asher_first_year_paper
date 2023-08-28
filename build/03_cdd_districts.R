@@ -110,7 +110,7 @@ colnames(df.fiscal) = names.variables
 
 # Export -----------------------------------------------------------------------
 write.table(
-  df.export,
+  df.fiscal,
   "../../data/output/built/cdd_controls_district.csv",
   append = FALSE,
   row.names = FALSE,
