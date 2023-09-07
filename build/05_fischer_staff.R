@@ -113,7 +113,7 @@ df.formatA <-
     TCH.White = ifelse(ETHNIC_GP %in% c("7"), 1, 0),
     TCH.RaceNA = ifelse(ETHNIC_GP %in% c("1"), 1, 0),
     TCH.Other = ifelse(ETHNIC_GP %in% c("8"), 1, 0),
-    TCH.FTE = ifelse(as.numeric(PERC_TIME) >= 100 & F_P_TIME == "F", 1, 0),
+    TCH.FTE = ifelse(as.numeric(PERC_TIME) >= 100 | F_P_TIME == "F", 1, 0),
     TCH.FullCred = as.numeric(FULL_CRED),
     Auth.GenElem = as.numeric(elem),
     Auth.GenSec = pmax(as.numeric(sec), as.numeric(GEN_SEC)), 
@@ -124,7 +124,7 @@ df.formatA <-
   dplyr::select(
     REC_ID, CDSCode, TCH.Male, TCH.Edu, TCH.AAPI, TCH.Hisp, TCH.Black, 
     TCH.White, TCH.RaceNA, TCH.Other, TCH.FTE, TCH.FullCred, 
-    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD
+    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD, SY
   )
 
 # Format B ---------------------------------------------------------------------
@@ -188,7 +188,7 @@ df.formatB <-
   dplyr::select(
     REC_ID, CDSCode, TCH.Male, TCH.Edu, TCH.AAPI, TCH.Hisp, TCH.Black, 
     TCH.White, TCH.RaceNA, TCH.Other, TCH.FTE, TCH.FullCred, 
-    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD
+    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD, SY
   )
 
 # Format C ---------------------------------------------------------------------
@@ -234,7 +234,7 @@ df.formatC <-
   dplyr::select(
     REC_ID, CDSCode, TCH.Male, TCH.Edu, TCH.AAPI, TCH.Hisp, TCH.Black, 
     TCH.White, TCH.RaceNA, TCH.Other, TCH.FTE, TCH.FullCred, 
-    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD
+    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD, SY
   )
 
 # Format D ---------------------------------------------------------------------
@@ -269,7 +269,7 @@ df.formatD <-
   dplyr::select(
     REC_ID, CDSCode, TCH.Male, TCH.Edu, TCH.AAPI, TCH.Hisp, TCH.Black, 
     TCH.White, TCH.RaceNA, TCH.Other, TCH.FTE, TCH.FullCred, 
-    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD
+    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD, SY
   )
 
 # Format E ---------------------------------------------------------------------
@@ -381,7 +381,7 @@ df.formatE <-
   dplyr::select(
     REC_ID, CDSCode, TCH.Male, TCH.Edu, TCH.AAPI, TCH.Hisp, TCH.Black, 
     TCH.White, TCH.RaceNA, TCH.Other, TCH.FTE, TCH.FullCred, 
-    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD
+    Auth.GenElem, Auth.GenSec, Auth.Math, Auth.English, Auth.ELD, SY
   )
 
 

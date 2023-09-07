@@ -368,6 +368,6 @@ colnames(df.output) <-
 # Output
 write.csv(
   df.output,
-  "../../data/output/build/ceda_candidates.csv"
+  "../../data/output/built/ceda_candidates.csv"
 )
 
