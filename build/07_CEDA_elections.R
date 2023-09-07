@@ -11,6 +11,8 @@ library(haven)
 library(purrr)
 library(readxl)
 library(lubridate)
+library(parallel)
+library(stringdist)
 
 # District Frame ---------------------------------------------------------------
 frame.district = fread("../../data/output/frames/frame_district.csv")
@@ -316,7 +318,7 @@ df.matched <-
     !(NCESDist %in% c("Many", "None"))
   )
 
-# Output -----------------------------------------------------------------------
+# Final Pre-Build --------------------------------------------------------------
 
 # Remove dist from ceda
 df.ceda <- 
@@ -339,15 +341,46 @@ df.ceda <-
 # Repair column names
 colnames(df.ceda) <- str_replace(colnames(df.ceda), "#", "")
 
-# Subset
+# Correct Variables & Goes to Runoff Indicators --------------------------------
+
+df.ceda <- 
+  df.ceda %>%
+  dplyr::mutate(
+    myelected = ifelse(
+      is.na(newelected),
+      ELECTED,
+      newelected
+    )
+  )
+
 df.output <- 
   df.ceda %>%
   dplyr::select(
-    RecordID, RaceID, NCESDist, DATE,
-    AREA, VOTE, LAST, FIRST, BALDESIG, 
-    INCUMB, CAND, VOTES, SUMVOTES,
-    ELECTED
+    Multi_RaceID, Multi_CandID, NCESDist, DATE, 
+    AREA, indivtotal_votes, multitotal_votes,
+    LAST, FIRST, BALDESIG, myelected,
+    VOTE, CAND, INCUMB
   )
+
+
+ranoff <- 
+  df.output %>%
+  summarise(
+    .by = "Multi_RaceID",
+    ranoff = max(myelected, na.rm = T)
+  ) %>%
+  dplyr::mutate(
+    ranoff = ifelse(ranoff == 3, 1, 0)
+  )
+
+df.output <-
+  left_join(
+    df.output,
+    ranoff,
+    by = "Multi_RaceID"
+  )
+
+# Write ------------------------------------------------------------------------
 
 # Fix NCESDist for writing
 df.output <-
@@ -358,16 +391,16 @@ df.output <-
 
 # Column names
 colnames(df.output) <- 
-  c("RecordID", "RaceID", "NCESDist", 
-    "ELEC.Date", "ELEC.Area", "ELECT.K",
-    "CAND.FirstName", "CAND.LastName",
-    "CAND.BalDes", "CAND.Incumb", 
-    "ELEC.CandNum", "CAND.Votes", 
-    "ELEC.VoteTotal", "CAND.Elected")
+  c("RaceID", "CandID", "NCESDist", "ELEC.Date", 
+    "ELEC.Area", "CAND.Votes", "ELEC.VoteTotal",
+    "CAND.LastName", "Cand.FirstName", "Cand.BalDes",
+    "CAND.Elected", "ELEC.K", "ELEC.CandNum", 
+    "CAND.Incumb", "ELEC.Ranoff")
 
 # Output
 write.csv(
   df.output,
   "../../data/output/built/ceda_candidates.csv"
 )
+
 

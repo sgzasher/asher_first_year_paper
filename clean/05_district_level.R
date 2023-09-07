@@ -72,46 +72,71 @@ df.tch.dist <-
     G.RT.EL.FT.H = ifelse(is.na(G.RT.EL.FT.H), 0, G.RT.EL.FT.H)
   ) %>%
   dplyr::mutate(
-    Dist.RT.FT = Winsorize(Tot.Tch / Tot.Stu, probs = c(0.01, 0.99), na.rm = T),
-    Dist.RT.H.FT = Winsorize(Tot.H.FT / Tot.Stu, probs = c(0.01, 0.99), na.rm = T),
-    Dist.RT.H.FT.H = Winsorize()
-    Dist.RT.EL.FT = Winsorize(),
-    Dist.RT.EL.FT.H = Winsorize(),
+    Dist.RT.FT = Winsorize(Tot.Tch / Tot.Stu, 
+                           probs = c(0.01, 0.99), 
+                           na.rm = T),
+    Dist.RT.H.FT = Winsorize(Tot.H.FT / Tot.Stu, 
+                             probs = c(0.01, 0.99), 
+                             na.rm = T),
+    Dist.RT.H.FT.H = Winsorize(Tot.H.FT / Tot.Stu.Hisp, 
+                               probs = c(0.01, 0.99), 
+                               na.rm = T),
+    Dist.RT.EL.FT = Winsorize(Tot.EL.FT / Tot.Stu, 
+                              probs = c(0.01, 0.99), 
+                              na.rm = T),
+    Dist.RT.EL.FT.H = Winsorize(Tot.EL.FT / Tot.Stu.Hisp, 
+                                probs = c(0.01, 0.99),
+                                na.rm = T)
   )
 
 # Restore missingness: FTE missing in 11-12, no auth variables (i.e. EL)
 # from 2009-10 to 2011-12
-col.a = c("RT.FT", "RT.H.FT", "RT.H.FT.H")
-col.b = c("RT.EL.FT", "RT.EL.FT.H")
+col.a = c("G.RT.FT", "G.RT.H.FT", "G.RT.H.FT.H", 
+          "Dist.RT.FT", "Dist.RT.H.FT", "Dist.RT.H.FT.H")
+col.b = c("G.RT.EL.FT", "G.RT.EL.FT.H",
+          "Dist.RT.EL.FT", "Dist.RT.EL.FT.H")
 
-df.tch.school[col.a] <- lapply(
-  df.tch.school[col.a],
+df.tch.dist[col.a] <- lapply(
+  df.tch.dist[col.a],
   function(x){
-    replace(x, df.tch.school$SY %in% c("2011-12"), NA)
+    replace(x, df.tch.dist$SY %in% c("2011-12"), NA)
   }
 )
 
-df.tch.school[col.b] <- lapply(
-  df.tch.school[col.b],
+df.tch.dist[col.b] <- lapply(
+  df.tch.dist[col.b],
   function(x){
-    replace(x, df.tch.school$SY %in% c("2009-10", "2011-12", "2010-11"), NA)
+    replace(x, df.tch.dist$SY %in% c("2009-10", "2011-12", "2010-11"), NA)
   }
 )
 
-df.tch.school <- 
-  df.tch.school %>%
-  dplyr::mutate(
-    across(
-      c(RT.FT, RT.H.FT, RT.H.FT.H),
-      ~ na_if(.x, SY %in% c("2011-12")),
-    ),
-    across(
-      c(RT.EL.FT, RT.EL.FT.H),
-      ~na_if(.x, SY %in% c("2009-10", "2011-12", "2010-11")),
-    )
+# Variable Selection -----------------------------------------------------------
+df.tch.dist <- 
+  df.tch.dist %>%
+  dplyr::select(
+    NCESDist, SY, G.RT.FT, G.RT.H.FT, G.RT.H.FT.H,
+    G.RT.EL.FT, G.RT.EL.FT.H, Dist.RT.FT, 
+    Dist.RT.H.FT, Dist.RT.H.FT.H, Dist.RT.EL.FT, 
+    Dist.RT.EL.FT.H
   )
 
-  
-func.reg("RT.FT")
-func.reg("RT.H.FT.H")
-func.reg("RT.EL.FT.H")
+df.sfp.dist <- 
+  df.sfp.dist %>%
+  dplyr::select(
+    NCESDist, SY, Tot.SFP.Scaled, SFP.Binary
+  ) %>%
+  dplyr::rename(
+    Dist.SFP.Scaled = Tot.SFP.Scaled,
+    Dist.SFP.Binary = SFP.Binary
+  )
+
+# Write ------------------------------------------------------------------------
+write.csv(
+  df.tch.dist,
+  "../../data/output/analysis/tch_analysis_dist.csv"
+)
+
+write.csv(
+  df.sfp.dist,
+  "../../data/output/analysis/sfp_analysis_dist.csv"
+)
