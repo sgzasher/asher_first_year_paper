@@ -26,14 +26,109 @@ colnames(df.ceda)[2] = "V1.New"
 
 # Individual Hispanicity Variables ---------------------------------------------
 
+### Individual-level hispnicity codes:
+# A: Only NALEO-CA (Binary)
+# B: Only NALEO (Binary)
+# C: NALEO-CA | BISG (Scaler)
+# D: NALEO | BISG (Scaler)
+# E: NALEO-CA | BISG90 (Binary)
+# F: NALEO | BISG90 (Binary)
+
+df.ceda <- 
+  df.ceda %>%
+  dplyr::mutate(
+    HISP.C = ifelse(HISP.NALEO.CA == 1, 1, pred.his),
+    HISP.E = ifelse(HISP.NALEO.CA == 1 | pred.his >= 0.9, 1, 0),
+  )
+
+# Time Trends ------------------------------------------------------------------
+trend <- 
+  df.ceda %>%
+  summarise(
+    .by = "SY",
+    HISP.C = mean(HISP.C, na.rm = T)
+  )
+
+trend.winner <-
+  df.ceda[df.ceda$CAND.Elected == 1,] %>%
+  summarise(
+    .by = "SY",
+    HISP.C = mean(HISP.C, na.rm = T)
+  )
+
+barplot(trend$HISP.C, names.arg = trend$SY)
+barplot(trend.winner$HISP.C, names.arg = trend$SY)
+
 # Outcome Variables ------------------------------------------------------------
 
-outcomes <- 
+# Race level
+outcomes.race <- 
   df.ceda %>%
   summarise(
     .by = c("RaceID", "SY"),
-    Num.Elected,
-    Num.Candidates,
-    KRatio,
-    
+    NCESDist = first(NCESDist),
+    ELEC.Ward = first(ELEC.Ward),
+    Num.Elected = sum(CAND.Elected == 1),
+    Num.Candidates = sum(length(unique(CandID))),
+    KRatio = mean(ELEC.KRatio, na.rm = T),
+    Sum.Win.Hisp.B = sum(ifelse(CAND.Elected == 1, HISP.NALEO, 0)),
+    Sum.Win.Hisp.C = sum(ifelse(CAND.Elected == 1, HISP.C, 0)),
+    Sum.Win.Hisp.E = sum(ifelse(CAND.Elected == 1, HISP.E, 0)),
+    Sum.Ran.Hisp.B = sum(HISP.NALEO),
+    Sum.Ran.Hisp.C = sum(HISP.C),
+    Sum.Ran.Hisp.E = sum(HISP.E),
+    VS.Hisp.B = sum(CAND.Share * HISP.NALEO),
+    VS.Hisp.C = sum(CAND.Share * HISP.C),
+    VS.Hisp.E = sum(CAND.Share * HISP.E)
   )
+
+# District level...
+outcomes.district <- 
+  df.ceda %>%
+  summarise(
+    .by = c("NCESDist", "SY"),
+    ELEC.Ward = first(ELEC.Ward),
+    Num.Elected = sum(CAND.Elected == 1),
+    Num.Candidates = sum(length(unique(CandID))),
+    Sum.Win.Hisp.B = sum(ifelse(CAND.Elected == 1, HISP.NALEO, 0)),
+    Sum.Win.Hisp.C = sum(ifelse(CAND.Elected == 1, HISP.C, 0)),
+    Sum.Win.Hisp.E = sum(ifelse(CAND.Elected == 1, HISP.E, 0)),
+    Sum.Ran.Hisp.B = sum(HISP.NALEO),
+    Sum.Ran.Hisp.C = sum(HISP.C),
+    Sum.Ran.Hisp.E = sum(HISP.E),
+    Votes.Total = sum(CAND.Votes, na.rm = T),
+    Votes.Hisp.B = sum(CAND.Votes * HISP.NALEO, na.rm = T),
+    Votes.Hisp.C = sum(CAND.Votes * HISP.C, na.rm = T),
+    Votes.Hisp.E = sum(CAND.Votes * HISP.E, na.rm = T)
+  )
+
+# And finishing those outcomes
+outcomes.district <- 
+  outcomes.district %>%
+  dplyr::mutate(
+    KRatio = ifelse(
+      is.infinite(Num.Candidates / Num.Elected),
+      NA,
+      Num.Candidates / Num.Elected
+    ),
+    VS.Hisp.B = Votes.Hisp.B / Votes.Total,
+    VS.Hisp.C = Votes.Hisp.C / Votes.Total,
+    VS.Hisp.E = Votes.Hisp.E / Votes.Total
+  ) %>%
+  dplyr::select(
+    NCESDist, SY, ELEC.Ward, Num.Elected, Num.Candidates,
+    KRatio, Sum.Win.Hisp.B, Sum.Win.Hisp.C, Sum.Win.Hisp.E,
+    Sum.Ran.Hisp.B, Sum.Ran.Hisp.C, Sum.Ran.Hisp.E,
+    VS.Hisp.B, VS.Hisp.C, VS.Hisp.E
+  )
+  
+# Write ------------------------------------------------------------------------
+write.csv(
+  outcomes.district,
+  "../../data/output/analysis/election_outcomes_district.csv"
+)
+
+write.csv(
+  outcomes.race,
+  "../../data/output/analysis/election_outcomes_race.csv"
+)
