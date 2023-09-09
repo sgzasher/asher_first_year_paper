@@ -275,7 +275,7 @@ census.data <- function(row.dist){
   
 }
 
-census.data(drame.dist[10,])
+census.data(frame.dist[10,])
 
 # Full districts
 x = list()
