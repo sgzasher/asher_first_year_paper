@@ -157,6 +157,14 @@ df.output <-
   left_join(df.output, df.dist.dissim, by = c("NCESDist", "SY"))
 
 df.district <- 
+  left_join(df.district, df.dist.dissim, by = c("NCESDist", "SY"))
+
+write.csv(
+  df.district,
+  "../../data/output/analysis/cdd_analysis_district.csv"
+)
+
+df.district <- 
   dplyr::select(
     df.district, 
     NCESDist, SY, Rev.Local.Property.Scaled, Exp.Instruction.Scaled,
@@ -170,3 +178,5 @@ write.csv(
   df.output,
   "../../data/output/analysis/cdd_analysis.csv"
 )
+
+

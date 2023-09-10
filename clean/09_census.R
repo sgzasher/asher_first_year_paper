@@ -22,8 +22,8 @@ library(tidyr)
 geom.dist <- read_sf("../../data/raw/geospatial/district_boundary/2000_composite/schooldistrict_sy9900_tl00.shp")
 geom.bg <- read_sf("../../data/raw/geospatial/nhgis0014_shape/nhgis0014_shapefile_tl2000_060_blck_grp_2000/CA_blck_grp_2000.shp")
 geom.sch <- read_sf("../../data/raw/geospatial/school_location/EDGE_GEOCODE_PUBLICSCH_1617/EDGE_GEOCODE_PUBLICSCH_1617/EDGE_GEOCODE_PUBLICSCH_1617.shp")
-df.census.a <- fread("../../data/raw/census/nhgis0014_csv/nhgis0014_ds147_2000_blck_grp.csv")
-df.census.b <- fread("../../data/raw/census/nhgis0014_csv/nhgis0014_ds152_2000_blck_grp.csv")
+df.census.a <- fread("../../data/raw/census/nhgis0015_csv/nhgis0015_ds147_2000_blck_grp.csv")
+df.census.b <- fread("../../data/raw/census/nhgis0015_csv/nhgis0015_ds152_2000_blck_grp.csv")
 frame.dist <- fread("../../data/output/frames/frame_district.csv")
 frame.sch <- fread("../../data/output/frames/frame_school.csv")
 
@@ -31,7 +31,7 @@ frame.sch <- fread("../../data/output/frames/frame_school.csv")
 df.census <- 
   bind_cols(
     df.census.a,
-    df.census.b[,34:200]
+    df.census.b[,34:214]
   )
 
 # Relevant Districts: LEA Codes ------------------------------------------------
@@ -233,7 +233,7 @@ census.data <- function(row.dist){
         .names = "{col}"
       ),
       across(
-        HK4001:HK4098,
+        HK4001:HK7014,
         sum,
         .names = "{col}"
       )

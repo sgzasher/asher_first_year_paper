@@ -76,49 +76,6 @@ df.mag <-
           )
   )
 
-# School-level Census Controls -------------------------------------------------
-
-# What I can add to mag: median income, proportion of latinos with high school, 
-# less than, and some college or more. Recall that there is no need for 
-# such controls at the district level. Unemployment rate. 
-
-
-# First: median income category (as a factor variable)
-# Function for median of factor across columns
-med.cat = function(x){
-  df = as.data.frame(df.cen[x,HF5001:HF5016])
-  
-  output = c()
-  
-  for(i in 1:16){
-    n = rep(colnames(df)[i], df[1,i])
-    output = c(output, n)
-  }
-  
-  output <- as.numeric(substr(output, 5, 6))
-  output <- median(output)
-  output = colnames(df.cen[x,HF5001:HF5016])[output]
-  return(output)
-}
-
-# Apply
-df.cen$CEN.Med.Inc <- 
-  lapply(
-    1:nrow(df.cen),
-    med.cat
-  )
-
-# Write as factor
-df.cen <- 
-  unnest(df.cen, cols = "CEN.Med.Inc") %>%
-  dplyr::mutate(CEN.Med.Inc = as.factor(CEN.Med.Inc))
-
-# Second: education proportions
-
-
-# School-level Dataset ---------------------------------------------------------
-
-# School-level Analyses --------------------------------------------------------
 
 # District-level Census Variables ----------------------------------------------
 
@@ -174,6 +131,28 @@ analysis.dist <-
     by = c("CDSCode", "SY")
   )
 
+#### Inclusion indicators ####
+analysis.dist$include <- 
+  ifelse(
+    analysis.dist$causal == 1 &
+      (analysis.dist$switcher == 0 | 
+         (analysis.dist$switcher == 1 & analysis.dist$switch.type %in% c(1, 2))
+      ),
+    1,
+    0
+  )
+
+analysis.dist$include2 <- 
+  ifelse(
+    analysis.dist$causal == 1,
+    1,
+    0
+  )
+
+#### Getting median hispanicity and segregation for treated units
+summary(analysis.dist[analysis.dist$include == 1 & analysis.dist$switcher == 1,]$Prop.Hisp)
+summary(analysis.dist[analysis.dist$include == 1 & analysis.dist$switcher == 1,]$CEN.Dissim)
+
 # High and low segregation districts
 seg.dist <- 
   summarise(
@@ -184,7 +163,7 @@ seg.dist <-
   dplyr::mutate(
     CEN.HighSeg = as.factor(
       ifelse(
-        Dissim > median(Dissim, na.rm = T),
+        Dissim > 0.3754,
         "Yes",
         "No"
       )
@@ -202,9 +181,39 @@ analysis.dist <-
     by = "NCESDist"
   )
 
+# High and low hispanic districts
+seg.dist <- 
+  summarise(
+    analysis.dist,
+    .by = "NCESDist",
+    Hisp = first(Prop.Hisp)
+  ) %>%
+  dplyr::mutate(
+    CEN.HighHisp = as.factor(
+      ifelse(
+        Hisp > 0.3726,
+        "Yes",
+        "No"
+      )
+    )
+  ) %>%
+  dplyr::select(
+    -Hisp
+  )
+
+# Join
+analysis.dist <- 
+  left_join(
+    analysis.dist,
+    seg.dist,
+    by = "NCESDist"
+  )
+
+
+
+
+
 # District-level Analyses  -----------------------------------------------------
-model.basic = " ~ (trustee * Prop.Hisp) | NCESDist + SY"
-model.noint = " ~ (trustee) | NCESDist + SY"
 
 # Basic loop
 
@@ -216,21 +225,21 @@ dist.analysis <- function(outcome.variable){
   
   # Dictionary
   dict.vec =  c("trustee" = "Ward",
-                "trustee x Prop.Hisp" = "Ward x Proportion Latino",
+                "trustee x \\High Hispanic" = "Ward x CEN.HighHispYes",
                 "treat:domgroup::Hisp:isdom" = "Treat x Hispanic Dominant",
                 "treat:domgroup::White:isdom" = "Treat x White Dominant",
                 "treat" = "Treat")
   
   ## First, in causal sample only
   col1 = feols(as.formula(paste0(outcome.variable, model.noint)),
-               analysis.dist[analysis.dist$causal == 1,])
+               analysis.dist[analysis.dist$include == 1,])
   col2 = feols(as.formula(paste0(outcome.variable, model.basic)),
-               analysis.dist[analysis.dist$causal == 1,])
+               analysis.dist[analysis.dist$include == 1,])
   col3 = feols(as.formula(paste0(outcome.variable, model.basic)),
-               analysis.dist[analysis.dist$causal == 1 & 
+               analysis.dist[analysis.dist$include == 1 & 
                              analysis.dist$CEN.HighSeg == "Yes",])
   col4 = feols(as.formula(paste0(outcome.variable, model.basic)),
-               analysis.dist[analysis.dist$causal == 1 & 
+               analysis.dist[analysis.dist$include == 1 & 
                                analysis.dist$CEN.HighSeg == "No",])
   
   # Output for causal sample
@@ -246,11 +255,11 @@ dist.analysis <- function(outcome.variable){
   
   ## Not causal sample
   col1 = feols(as.formula(paste0(outcome.variable, model.noint)),
-               analysis.dist)
+               analysis.dist[analysis.dist$causal == 1,])
   col2 = feols(as.formula(paste0(outcome.variable, model.basic)),
-               analysis.dist)
+               analysis.dist[analysis.dist$causal == 1,])
   col3 = feols(as.formula(paste0(outcome.variable, model.basic)),
-               analysis.dist[analysis.dist$CEN.HighSeg == "Yes",])
+               analysis.dist[analysis.dist$causal == 1 & analysis.dist$CEN.HighSeg == "Yes",])
   col4 = feols(as.formula(paste0(outcome.variable, model.basic)),
                analysis.dist[analysis.dist$causal == 1 & 
                                analysis.dist$CEN.HighSeg == "No",])
@@ -300,4 +309,7 @@ dist.analysis("Sum.Win.Hisp.E")
 dist.analysis("Sum.Ran.Hisp.C")
 dist.analysis("Sum.Ran.Hisp.B")
 dist.analysis("Sum.Ran.Hisp.E")
+
+# School-level Analyses --------------------------------------------------------
+
 
