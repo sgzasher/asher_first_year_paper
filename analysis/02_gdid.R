@@ -129,6 +129,42 @@ analysis.dist("G.RT.H.FT.H",
               "Prop.Hisp",
               1)
 
+x = felm(as.formula("G.RT.H.FT.H ~ trustee | NCESDist + SY"), df.dist[df.dist[["include"]] == 1,])
+
+
+quantile(df.dist$Prop.Hisp, na.rm = T, probs = seq(0, 1, 0.1))
+# Look at this i mean.... ENTIRE effect from top decile of hispanicity...
+df.dist$include2 = ifelse(
+  df.dist$include == 1 &
+  ((df.dist$switcher == 1 & (df.dist$Prop.Hisp > 0.25 & df.dist$Prop.Hisp < 0.34)) | 
+   (df.dist$switcher == 0)),
+  1,
+  0
+)
+
+df.dist$trustee2 = (df.dist$trustee * df.dist$Prop.Hisp)
+feols(as.formula("G.RT.H.FT.H ~ (trustee) | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1,], weights = df.dist[df.dist[["include2"]] == 1,]$weight)
+
+# Also notice that lfe::felm outputs to stargazer so might want to switch to that if we can 
+# figure out how to get the weights to work
+
+feols(as.formula("G.RT.H.FT.H ~ (trustee) | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1,], weights = df.dist[df.dist[["include2"]] == 1,]$weight)
+feols(as.formula("G.RT.H.FT.H ~ (trustee) | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1,])
+
+
+x = felm(as.formula("G.RT.H.FT.H ~ (trustee * Prop.Hisp) | NCESDist + SY"), df.dist[df.dist[["include"]] == 1,], weights = df.dist[df.dist[["include"]] == 1,]$weight)
+
+
+y = felm(as.formula("G.RT.H.FT.H ~ trustee | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1 & df.dist[["CEN.HighHisp.24"]]=="Yes",])
+z = felm(as.formula("G.RT.H.FT.H ~ trustee | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1 & df.dist[["CEN.HighHisp.24"]]=="No",])
+  
+stargazer(x,z,y, type = "text")  
+
+analysis.dist("G.RT.H.FT.H",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1)
+
 analysis.dist("G.RT.EL.FT.H",
               "CEN.HighSeg.24",
               "Prop.Hisp",
@@ -150,9 +186,19 @@ analysis.dist("Prop.Win.Hisp.C",
               "Prop.Hisp",
               1)
 
+analysis.dist("Prop.Win.Hisp.C",
+              "CEN.HighSeg.24",
+              "CEN.HighHisp.24",
+              1)
+
 analysis.dist("Prop.Ran.Hisp.C",
               "CEN.HighSeg.24",
               "Prop.Hisp",
+              1)
+
+analysis.dist("Prop.Ran.Hisp.C",
+              "CEN.HighSeg.24",
+              "CEN.HighHisp.24",
               1)
 
 # Analysis Function: School ----------------------------------------------------

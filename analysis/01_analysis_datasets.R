@@ -9,6 +9,7 @@ library(stringr)
 library(DescTools)
 library(fixest)
 library(stargazer)
+library(tidyr)
 
 # Read in file -----------------------------------------------------------------
 
@@ -141,13 +142,76 @@ analysis.dist <-
     by =c("NCESDist", "SY")
   )
 
+# District Level: Electoral Outcomes Correct -----------------------------------
+analysis.dist <- 
+  analysis.dist %>%
+  dplyr::mutate(
+    Prop.Win.Hisp.B = Sum.Win.Hisp.B / Num.Elected,
+    Prop.Win.Hisp.C = Sum.Win.Hisp.C / Num.Elected,
+    Prop.Win.Hisp.E = Sum.Win.Hisp.E / Num.Elected,
+    Prop.Ran.Hisp.B = Sum.Ran.Hisp.B / Num.Candidates,
+    Prop.Ran.Hisp.C = Sum.Ran.Hisp.C / Num.Candidates,
+    Prop.Ran.Hisp.E = Sum.Ran.Hisp.E / Num.Candidates,
+  )
+
+# District Level: Extend Mag Variables -----------------------------------------
+dist.mag <- 
+  analysis.dist %>%
+  dplyr::filter(SY == "2002-03") %>%
+  dplyr::select(NCESDist, switcher, switch.type, causal)
+  
+analysis.dist <- 
+  left_join(
+    analysis.dist[,-c("switcher", "switch.type", "causal")],
+    dist.mag,
+    by = "NCESDist"
+  )
+
+dist.treat.03 <- 
+  analysis.dist %>%
+  dplyr::filter(SY == "2002-03") %>%
+  dplyr::rename(trustee.new = trustee) %>%
+  dplyr::select(trustee.new, NCESDist, SY, switcher) %>%
+  dplyr::mutate(SY = "2001-02")  %>%
+  dplyr::mutate(trustee.new = ifelse(
+    switcher == 1, 
+    0,
+    trustee.new
+  )) %>%
+  dplyr::select(-switcher)
+
+dist.treat.02 <- 
+  analysis.dist %>%
+  dplyr::filter(SY == "2002-03") %>%
+  dplyr::rename(trustee.new = trustee) %>%
+  dplyr::select(trustee.new, NCESDist, SY, switcher) %>%
+  dplyr::mutate(SY = "2000-01")  %>%
+  dplyr::mutate(trustee.new = ifelse(
+    switcher == 1, 
+    0,
+    trustee.new
+  )) %>%
+  dplyr::select(-switcher)
+
+dist.treat <- bind_rows(dist.treat.03, dist.treat.02)
+
+analysis.dist <- left_join(analysis.dist, dist.treat, by = c("NCESDist", "SY"))
+analysis.dist$trustee = ifelse(
+  is.na(analysis.dist$trustee), 
+  analysis.dist$trustee.new,
+  analysis.dist$trustee
+)
+
+analysis.dist = analysis.dist[,-"trustee.new"]
+
 #### Inclusion indicators ####
 analysis.dist$include <- 
   ifelse(
-    analysis.dist$causal == 1 &
-      (analysis.dist$switcher == 0 | 
-         (analysis.dist$switcher == 1 & analysis.dist$switch.type %in% c(1, 2))
-      ),
+    analysis.dist$causal == 1 & (
+      (analysis.dist$trustee == 0 & analysis.dist$switcher == 0) |
+      (analysis.dist$trustee == 0 & analysis.dist$switch.type %in% c(1, 2)) | 
+      (analysis.dist$trustee == 1 & analysis.dist$switch.type %in% c(1, 2))
+    ),
     1,
     0
   )
@@ -219,6 +283,13 @@ hisp.dist <-
         "Yes",
         "No"
       )
+    ), 
+    CEN.Hisp75.24 = as.factor(
+      ifelse(
+        Hisp > 0.4504,
+        "Yes",
+        "No"
+      )
     )
   ) %>%
   dplyr::select(
@@ -233,7 +304,8 @@ analysis.dist <-
     by = "NCESDist"
   )
 
-### Check group inclusions by treatment status
+
+# Check group inclusions by treatment status -----------------------------------
 analysis.dist$switch.keep = 
   analysis.dist$switch.type * analysis.dist$switcher
 
@@ -271,20 +343,9 @@ analysis.dist <-
     weight = Dist.Total / weight
   )
 
-# District Level: Electoral Outcomes Correct -----------------------------------
-analysis.dist <- 
-  analysis.dist %>%
-  dplyr::mutate(
-    Prop.Win.Hisp.B = Sum.Win.Hisp.B / Num.Elected,
-    Prop.Win.Hisp.C = Sum.Win.Hisp.C / Num.Elected,
-    Prop.Win.Hisp.E = Sum.Win.Hisp.E / Num.Elected,
-    Prop.Ran.Hisp.B = Sum.Ran.Hisp.B / Num.Candidates,
-    Prop.Ran.Hisp.C = Sum.Ran.Hisp.C / Num.Candidates,
-    Prop.Ran.Hisp.E = Sum.Ran.Hisp.E / Num.Candidates,
-  )
-
 
 # District Level: Write --------------------------------------------------------
+
 write.csv(
   analysis.dist,
   "../../data/output/analysis/district_regressions.csv"
@@ -467,13 +528,32 @@ analysis.school <-
     weight = Stu.Count.Reported / weight
   )
 
+# School Level: Extend Mag Variables -----------------------------------------
+analysis.school <- 
+  left_join(
+    analysis.school[,-c("switcher", "switch.type", "causal")],
+    dist.mag,
+    by = "NCESDist"
+  )
+
+analysis.school <- left_join(analysis.school, dist.treat, 
+                             by = c("NCESDist", "SY"))
+analysis.school$trustee = ifelse(
+  is.na(analysis.school$trustee), 
+  analysis.school$trustee.new,
+  analysis.school$trustee
+)
+
+analysis.school = analysis.school[,-"trustee.new"]
+
 ### Inclusion indicators ###
 analysis.school$include <- 
   ifelse(
-    analysis.school$causal == 1 &
-      (analysis.school$switcher == 0 | 
-         (analysis.school$switcher == 1 & analysis.school$switch.type %in% c(1, 2))
-      ),
+    analysis.school$causal == 1 & (
+      (analysis.school$trustee == 0 & analysis.school$switcher == 0) |
+      (analysis.school$trustee == 0 & analysis.school$switch.type %in% c(1, 2)) | 
+      (analysis.school$trustee == 1 & analysis.school$switch.type %in% c(1, 2))
+    ),
     1,
     0
   )
@@ -484,6 +564,7 @@ analysis.school$include2 <-
     1,
     0
   )
+
 
 # School-level Write ---------------------------------------------------------
 write.csv(
