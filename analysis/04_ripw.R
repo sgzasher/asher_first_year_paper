@@ -95,8 +95,16 @@ ripw <- function(Y, tr,
   tauhat <- numer / denom
   
   Ytd_c <- Ytd_c - tr_c * tauhat
+  
+  # Handle missingness that arises from values not dense in years
+  Gamma_wy[is.na(Gamma_wy)] <- 0
+  tr_c[is.na(tr_c)] <- 0
+  Ytd_c[is.na(Ytd_c)] <- 0
+  Gamma_w[is.na(Gamma_w)] <- 0
+  Gamma_y[is.na(Gamma_y)] <- 0
+  
   V <- (Gamma_wy + rowSums(tr_c * Ytd_c, na.rm = T) - Ytd_c %*% Gamma_w - tr_c %*% Gamma_y) * Theta / denom
-
+  
   tau_se <- sqrt(sum(V^2, na.rm = T)) / n
   
   tstat <- abs(tauhat / tau_se)
@@ -198,7 +206,7 @@ ripw.full <- function(
   
 }
 
-# HTE Function -----------------------------------------------------------------
+# HTE Function: District -------------------------------------------------------
 
 # Functions
 hte.dist <- function(outcome){
@@ -327,26 +335,115 @@ cond.q4 = (analysis.dist$include == 1 &
       (analysis.dist$Prop.Hisp >= x[[5]] & analysis.dist$Prop.Hisp <= x[[6]])) | 
       (analysis.dist$switcher == 0)))
 
-# Example estimation
-p = as.data.frame(hte.dist("Dist.SFP.Scaled"))
-p$coef = as.numeric(p$coef)
-p$se = as.numeric(p$se)
+# analysis.dist$Prop.Ran.Hisp.C = 
+#   ifelse(
+#     is.na(analysis.dist$Prop.Ran.Hisp.C),
+#     0,
+#     analysis.dist$Prop.Ran.Hisp.C
+#   )
 
-ggplot(p, aes(hisp, coef)) + 
-  geom_errorbar(
-    aes(ymin = coef - (1.96 * se), 
-        ymax = coef + (1.96 * se),
-        color = seg),
-    position = position_dodge(0.1), width = 0.1
-  ) + 
-  geom_point(aes(color = seg), position = position_dodge(0.1)) + 
-  scale_color_manual(name = "District\nSegregation", 
-                     values = c("#00AFBB", "#E7B800")) + 
-  theme_classic() + 
-  geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
-  labs(x = "Hispanic (Treated Unit) Quartiles",
-       y = "DATE Estimate",
-       title = "RIPW HTE Analysis: SFP Project Intensive Margin",
-       subtitle = "TWFE Outcome Model with Random Forest Treatment Model",
-       caption = "See Arkhangelsky et al. (2023)") + 
-  theme(legend.position = c(0.9, 0.13))
+# HTE: District ----------------------------------------------------------------
+
+hte.chart <- function(outcome, legend.pos, label){
+  
+  # Estimate fullmodel
+  full.model =
+    ripw.full(analysis.dist,
+              outcome,
+              "trustee",
+              "",
+              "fold",
+              "NCESDist",
+              "SY",
+              "rip"
+    )
+  
+  # Estimate HTE
+  p = as.data.frame(hte.dist(outcome))
+  p$coef = as.numeric(p$coef)
+  p$se = as.numeric(p$se)
+  
+  # Plot
+  plot <- 
+    ggplot(p, aes(hisp, coef)) + 
+    geom_errorbar(
+      aes(ymin = coef - (1.96 * se), 
+          ymax = coef + (1.96 * se),
+          color = seg),
+      position = position_dodge(0.1), width = 0.1
+    ) + 
+    geom_point(aes(color = seg), position = position_dodge(0.1)) + 
+    scale_color_manual(name = "District\nSegregation", 
+                       values = c("#00AFBB", "#E7B800")) + 
+    theme_classic() + 
+    geom_hline(yintercept = 0, linetype = "solid", color = "black") + 
+    labs(x = "Hispanic (Treated Unit) Quartiles",
+         y = "DATE Estimate",
+         title = paste0("RIPW HTE Analysis: ", label),
+         subtitle = "TWFE Outcome Model with Random Forest Treatment Model",
+         caption = paste0("See Arkhangelsky et al. (2023). Red line and interval is aggregate DATE. Tau = ",
+                          round(full.model$tauhat, digits = 3),
+                          ", SE = ",
+                          round(full.model$se, digits = 3))) + 
+    theme(legend.position = legend.pos) + 
+    geom_hline(yintercept = full.model$tauhat,
+               linetype = "longdash", color = "red") + 
+    geom_hline(yintercept = full.model$tauhat + (1.96 * full.model$se),
+               linetype = "dotted", color = "red") + 
+    geom_hline(yintercept = full.model$tauhat - (1.96 * full.model$se),
+               linetype = "dotted", color = "red")  
+    
+    return(plot)
+  
+}
+
+# Win
+pdf(file = "../../output/ripw_plots/dist_win_hisp.pdf", width = 8.6, height = 6)
+hte.chart("Prop.Win.Hisp.C", c(0.9, 1), "Proportion Board Elected Hispanic")
+dev.off()
+
+# Ran
+pdf(file = "../../output/ripw_plots/dist_ran_hisp.pdf", width = 8.6, height = 6)
+hte.chart("Prop.Ran.Hisp.C", c(0.9, 1), "Propotion Candidates Ran Hispanic")
+dev.off()
+
+# Binary
+pdf(file = "../../output/ripw_plots/dist_sfp_bin.pdf", width = 8.6, height = 6)
+hte.chart("Dist.SFP.Binary", c(0.9, 1), "Binary Indicator for SFP Project")
+dev.off()
+
+# Scaled
+pdf(file = "../../output/ripw_plots/dist_sfp_sca.pdf", width = 8.6, height = 6)
+hte.chart("Dist.SFP.Scaled", c(0.9, 1), "SFP Spending Per Student")
+dev.off()
+
+# FT
+pdf(file = "../../output/ripw_plots/dist_ft.pdf", width = 8.6, height = 6)
+hte.chart("Dist.RT.FT", c(0.1, .15), "Full-Time Teacher-Student Ratio")
+dev.off()
+
+# H
+pdf(file = "../../output/ripw_plots/dist_h.pdf", width = 8.6, height = 6)
+hte.chart("Dist.RT.H.FT", c(0.1, .15), "Full Time Hispanic Teacher-Student Ratio")
+dev.off()
+
+# EL
+pdf(file = "../../output/ripw_plots/dist_el.pdf", width = 8.6, height = 6)
+hte.chart("Dist.RT.EL.FT", c(0.1, .85), "Full Time English-Language Teacher-Student Ratio")
+dev.off()
+
+#GFT
+pdf(file = "../../output/ripw_plots/dist_g_ft.pdf", width = 8.6, height = 6)
+hte.chart("G.RT.FT", c(0.9, 1), "Gini Coefficient of Full Time TS Ratio")
+dev.off()
+
+#GH
+pdf(file = "../../output/ripw_plots/dist_g_h.pdf", width = 8.6, height = 6)
+hte.chart("G.RT.H.FT", c(0.9, 1), "Gini Coefficient of Full Time Hispanic TS Ratio")
+dev.off()
+
+#GEL
+pdf(file = "../../output/ripw_plots/dist_g_el.pdf", width = 8.6, height = 6)
+hte.chart("G.RT.EL.FT", c(0.9, 1), "Gini Coefficient of Full Time EL TS Ratio")
+dev.off()
+

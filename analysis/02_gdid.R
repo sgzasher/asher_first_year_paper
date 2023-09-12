@@ -27,7 +27,7 @@ df.dist = csv.fix(df.dist)
 
 # Analysis Function: District --------------------------------------------------
 
-analysis.dist <- function(var.outcome, var.split, var.hte, include.group = 1){
+analysis.dist <- function(var.outcome, var.split, var.hte, include.group = 1, file.arg){
   
 
   # Subsample for analysis
@@ -70,139 +70,20 @@ analysis.dist <- function(var.outcome, var.split, var.hte, include.group = 1){
     signif.code = c("***"=0.01, "**"=0.05, "*"=0.10),
     depvar = T,
     fitstat = c("n", "r2"),
-    keep = "trustee"
+    keep = "trustee",
+    tex = T,
+    file = file.arg,
+    replace = T,
+    headers = list(" " = list(" "=2, "Segregation"=2),
+                   " " = list("All" = 2, "High" = 1, "Low" = 1))
   )
   
   return(tab)
   
 }
 
-
-# Analysis: Magazinnik District Splits Inappropriate ---------------------------
-analysis.dist("Dist.SFP.Scaled",
-              "CEN.HighSeg.All",
-              "Prop.Hisp",
-              1)
-
-# Analysis: Magazinnik Replication & Alternative Dist Splitting ----------------
-analysis.dist("Prop.Win.Hisp.E",
-              "CEN.HighSeg.All",
-              "Prop.Hisp",
-              1)
-
-analysis.dist("Prop.Win.Hisp.C",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-analysis.dist("Sum.Win.Hisp.C",
-              "CEN.HighSeg.24",
-              "CEN.HighHisp.24",
-              1)
-
-# Analysis: District -----------------------------------------------------------
-
-### SFP Outcomes ###
-analysis.dist("Dist.SFP.Binary",
-              "CEN.HighSeg.24",
-              "CEN.HighHisp.24",
-              1)
-
-analysis.dist("Dist.SFP.Binary",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-analysis.dist("Dist.SFP.Scaled",
-              "CEN.HighSeg.24",
-              "CEN.HighHisp.24",
-              1)
-
-analysis.dist("Dist.SFP.Scaled",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-### Teacher Outcomes ###
-analysis.dist("G.RT.H.FT.H",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-x = felm(as.formula("G.RT.H.FT.H ~ trustee | NCESDist + SY"), df.dist[df.dist[["include"]] == 1,])
-
-
-quantile(df.dist$Prop.Hisp, na.rm = T, probs = seq(0, 1, 0.1))
-# Look at this i mean.... ENTIRE effect from top decile of hispanicity...
-df.dist$include2 = ifelse(
-  df.dist$include == 1 &
-  ((df.dist$switcher == 1 & (df.dist$Prop.Hisp > 0.25 & df.dist$Prop.Hisp < 0.34)) | 
-   (df.dist$switcher == 0)),
-  1,
-  0
-)
-
-df.dist$trustee2 = (df.dist$trustee * df.dist$Prop.Hisp)
-feols(as.formula("G.RT.H.FT.H ~ (trustee) | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1,], weights = df.dist[df.dist[["include2"]] == 1,]$weight)
-
-# Also notice that lfe::felm outputs to stargazer so might want to switch to that if we can 
-# figure out how to get the weights to work
-
-feols(as.formula("G.RT.H.FT.H ~ (trustee) | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1,], weights = df.dist[df.dist[["include2"]] == 1,]$weight)
-feols(as.formula("G.RT.H.FT.H ~ (trustee) | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1,])
-
-
-x = felm(as.formula("G.RT.H.FT.H ~ (trustee * Prop.Hisp) | NCESDist + SY"), df.dist[df.dist[["include"]] == 1,], weights = df.dist[df.dist[["include"]] == 1,]$weight)
-
-
-y = felm(as.formula("G.RT.H.FT.H ~ trustee | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1 & df.dist[["CEN.HighHisp.24"]]=="Yes",])
-z = felm(as.formula("G.RT.H.FT.H ~ trustee | NCESDist + SY"), df.dist[df.dist[["include2"]] == 1 & df.dist[["CEN.HighHisp.24"]]=="No",])
-  
-stargazer(x,z,y, type = "text")  
-
-analysis.dist("G.RT.H.FT.H",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-analysis.dist("G.RT.EL.FT.H",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-analysis.dist("G.RT.FT",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-analysis.dist("Dist.RT.FT",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-### Electoral Outcomes ###
-analysis.dist("Prop.Win.Hisp.C",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-analysis.dist("Prop.Win.Hisp.C",
-              "CEN.HighSeg.24",
-              "CEN.HighHisp.24",
-              1)
-
-analysis.dist("Prop.Ran.Hisp.C",
-              "CEN.HighSeg.24",
-              "Prop.Hisp",
-              1)
-
-analysis.dist("Prop.Ran.Hisp.C",
-              "CEN.HighSeg.24",
-              "CEN.HighHisp.24",
-              1)
-
 # Analysis Function: School ----------------------------------------------------
-analysis.sch <- function(var.outcome, var.split, var.hte, include.group = 1){
+analysis.sch <- function(var.outcome, var.split, var.hte, include.group = 1, file.arg){
   
   # Subsample for analysis
   if(include.group == 1){
@@ -261,7 +142,11 @@ analysis.sch <- function(var.outcome, var.split, var.hte, include.group = 1){
       "Title.I", "Stu.Prop.FRSM", "Stu.Prop.White", "Stu.Prop.Black",
       "Stu.Prop.AAPI", "CEN.Unemp", "Prop.LessHigh", "Prop.High", 
       "Prop.College", "CEN.Med.Inc")),
-    headers = list(Segregation = list(" " = 3, "High" = 1, "Low" = 1))
+    tex = T,
+    file = file.arg,
+    replace = T,
+    headers = list(" " = list(" "=3, "Segregation"=2),
+                   " " = list("All" = 3, "High" = 1, "Low" = 1))
   )
   
   return(tab)
@@ -269,38 +154,124 @@ analysis.sch <- function(var.outcome, var.split, var.hte, include.group = 1){
 }
 
 
-# Analysis: School -------------------------------------------------------------
 
+# Analysis: Electoral ----------------------------------------------------------
 
-### SFP Outcomes ###
-analysis.sch("SFP.Binary",
+# Approximate replication of Magazinnik speciifcaiton
+analysis.dist("Prop.Win.Hisp.E",
               "CEN.HighSeg.24",
-              "Stu.Prop.Hisp",
-              1)
+              "Prop.Hisp",
+              1,
+              "../../output/tables/mag_election_spec.tex")
+
+# My preferred version
+analysis.dist("Prop.Win.Hisp.C",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_elec_win_c.tex")
+
+# Other electoral specificaion
+analysis.dist("Prop.Ran.Hisp.C",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_elec_ran_c.tex")
+
+### LEAVE REMAINING VERSIONS TO ROBUSTNESS CHECKS
+
+# Analysis: SFP ----------------------------------------------------------------
+
+# Binary
+analysis.dist("Dist.SFP.Binary",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_sfp_binary.tex")
+
+analysis.sch("SFP.Binary",
+             "CEN.HighSeg.24",
+             "Stu.Prop.Hisp",
+             1,
+             "../../output/tables/sch_sfp_binary.tex")
+
+# Scaled
+analysis.dist("Dist.SFP.Scaled",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_sfp_scaled.tex")
 
 analysis.sch("Tot.SFP.Scaled",
              "CEN.HighSeg.24",
              "Stu.Prop.Hisp",
-             1)
+             1,
+             "../../output/tables/sch_sfp_scaled.tex")
 
-analysis.sch("RT.H.FT",
-             "CEN.HighSeg.24",
-             "Stu.Prop.Hisp",
-             1)
 
-analysis.sch("RT.EL.FT",
-             "CEN.HighSeg.24",
-             "Stu.Prop.Hisp",
-             1)
+# Analysis: Teachers -----------------------------------------------------------
+
+
+# Total Teachers
+analysis.dist("Dist.RT.FT",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_rt_ft.tex")
+
+analysis.dist("G.RT.FT",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_g_rt_ft.tex")
 
 analysis.sch("RT.FT",
              "CEN.HighSeg.24",
              "Stu.Prop.Hisp",
-             1)
+             1,
+             "../../output/tables/sch_rt_ft.tex")
 
+# Hispanic Teachers
+analysis.dist("Dist.RT.H.FT",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_rt_h_ft.tex")
+
+analysis.dist("G.RT.H.FT",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_g_rt_h_ft.tex")
+
+analysis.sch("RT.H.FT",
+             "CEN.HighSeg.24",
+             "Stu.Prop.Hisp",
+             1,
+             "../../output/tables/sch_rt_h_ft.tex")
+
+# English Language Teachers
+analysis.dist("Dist.RT.EL.FT",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_rt_el_ft.tex")
+
+analysis.dist("G.RT.EL.FT",
+              "CEN.HighSeg.24",
+              "Prop.Hisp",
+              1,
+              "../../output/tables/dist_g_rt_el_ft.tex")
+
+analysis.sch("RT.EL.FT",
+             "CEN.HighSeg.24",
+             "Stu.Prop.Hisp",
+             1,
+             "../../output/tables/sch_rt_el_ft.tex")
+
+# Teacher Qualifications
 analysis.sch("PC.MasterPlus",
              "CEN.HighSeg.24",
              "Stu.Prop.Hisp",
-             1)
-
-
+             1,
+             "../../output/tables/sch_pc_mast.tex")
