@@ -124,7 +124,7 @@ read.formatC <- function(path.data){
     
     rm(temp.file)
   }
-          
+     
   # Remove unzipped
   for(i in readme){
     file.remove(paste0(path.data, "/", i))

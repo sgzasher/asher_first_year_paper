@@ -45,7 +45,7 @@ df.treat <-
     ana.dist, 
     NCESDist, switcher, causal, 
     switch.type, switch.keep, SY,
-    trustee, include, include2
+    trustee, include
     )
 
 # Ignore if not incuded in preferred specs
@@ -75,7 +75,7 @@ df.treat$treat.time =
 
 df.treat <- df.treat %>%
   dplyr::select(
-    NCESDist, trustee, treat.time, include, include2,
+    NCESDist, trustee, treat.time, include,
     switcher
   )
 
@@ -116,9 +116,9 @@ train.dist <- train.dist[train.dist[["include"]]==1,]
 
 # Normalise Training Variables -------------------------------------------------
 norm.variable = 
-colnames(train.dist[,-c("NCESDist", "SY", "include", "include2", "switcher", "inframe",
-                       "NCESDist", "SY", "trustee", "trustee.forced",
-                       "treat.time", "switcher.forced")])
+colnames(train.dist[,-c("NCESDist", "SY", "include", "switcher", "inframe",
+                       "NCESDist", "SY", "trustee",
+                       "treat.time")])
 
 for(i in norm.variable){
   vector <- as.vector(train.dist[[i]])
@@ -133,14 +133,14 @@ for(i in norm.variable){
 est.data = impute(
   Surv(treat.time, switcher) ~ ., 
   train.dist[,
-             -c("include", "include2", "inframe",
+             -c("include", "inframe",
                 "NCESDist", "SY", "trustee")]
 )
 
-tune.list = tune(
-  Surv(treat.time, switcher) ~ ., 
-  est.data
-)
+tune.list = tune.rfsrc(
+   Surv(treat.time, switcher) ~ .,
+   est.data
+ )
 
 print(tune.list$optimal)
 
@@ -148,22 +148,20 @@ print(tune.list$optimal)
 pscore.model = 
   rfsrc(Surv(treat.time, switcher)~., 
         est.data,
-        ntree = 1000, 
-        nodesize = tune.list$optimal[[1]], 
-        nsplit = 50, 
+        ntree = 1000,
+        nodesize = tune.list$optimal[[1]],
         mtry = tune.list$optimal[[2]])
 
 
 #### Example Plot ####
 # example treat and control unit
-which(train.dist[train.dist[["include"]]==1,]$switcher==1)
-y.hat = rbind(pscore.model$survival.oob[237,],
-              pscore.model$survival.oob[5,])
+which(train.dist$switcher == 1)
+which(train.dist$NCESDist == "624660")
+which(train.dist$NCESDist == "600016")
+y.hat = rbind(pscore.model$survival.oob[which(train.dist$NCESDist == "624660"),],
+              pscore.model$survival.oob[which(train.dist$NCESDist == "600016"),])
 
-train.dist[["treat.time"]][237]
-train.dist[["NCESDist"]][237]
-train.dist[["treat.time"]][5]
-train.dist[["NCESDist"]][5]
+train.dist[["treat.time"]][which(train.dist$NCESDist == "608130")]
 
 y.hat = as.data.frame(t(y.hat))
 y.hat$time.interest = pscore.model$time.interest
@@ -172,11 +170,12 @@ pdf(file = "../../output/pscore_plots/surv_curves.pdf", width = 8.6, height = 6)
 plot(round(y.hat$time.interest,2), y.hat[,1], type="l", xlab="Time (Year)",   
      ylab="Survival", col=1, lty=1, lwd=2, xaxt = "n",
      main = "Example Survival Curves",
-     sub = "Random Forest Model on 2000 Census Block Group Data")
+     sub = "Random Forest Model on 2000 Census Block Group Data",
+     ylim = c(0.8, 1))
 lines(round(y.hat$time.interest,2), y.hat[,2], col=2, lty=2, lwd=2)
 abline(v = 9, col = "blue", lwd = 1, lty = 2)
 axis(1, at = c(5, 8, 11, 14, 16),  labels = c(2005, 2008, 2011, 2014, 2016))
-legend("topright", legend=c("Example Treated Unit (NCES: 624660)","Example Control Unit (NCES: 600016)"), col=c(1:2), lty=1:2, cex=1, lwd=2)
+legend("topright", legend=c("Example Treated Unit (NCES: 608130)","Example Control Unit (NCES: 600016)"), col=c(1:2), lty=1:2, cex=1, lwd=2)
 dev.off()
 
 # Convert to Propensity Score --------------------------------------------------
@@ -190,7 +189,7 @@ survival.to.pscore <- function(vector.survival, year.treated, a = 1){
     survival.full[c(5, 8, 9, 10, 11, 12, 13, 14, 15, 16)] = vector.survival
   }
   else{
-    survival.full[c(2, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16)] = vector.survival
+    survival.full[c(5, 8, 9, 10, 11, 12, 13, 14, 15, 16)] = vector.survival
   }
   
   survival.full[1:4] = 1
@@ -202,7 +201,9 @@ survival.to.pscore <- function(vector.survival, year.treated, a = 1){
     1 - survival.full.approx[16]
   )
   
-  return(pscore)
+  pscore.2012.csec = 1 - survival.full.approx[13]
+  
+  return(list(pscore, pscore.2012.csec))
 }
 
 # Pscores: trained on only forced switcheds
@@ -215,7 +216,19 @@ pscores = lapply(
     pscore.model$survival.oob[x,],
     check$treat.time[x],
     a = 1
-  )}
+  )[[1]]}
+)
+
+# Pscores for 2012 cross setional analysis
+pscore.2012.csec = lapply(
+  1:nrow(check),
+  FUN = function(x){
+    survival.to.pscore(
+      pscore.model$survival.oob[x,],
+      check$treat.time[x],
+      a = 1
+    )[[2]]
+  }
 )
 
 # Get the pscores
@@ -235,7 +248,7 @@ pscores.2012 = lapply(
       pscore.model$survival.oob[x,],
       13,
       a = 1
-    )}
+    )[[1]]}
 )
 
 # Get them
@@ -243,9 +256,19 @@ pscores.2012 = as.data.frame(unlist(pscores.2012))
 pscores.2012$NCESDist = check$NCESDist
 colnames(pscores.2012)[1] = "pscore.2012"
 
+## Finally, want to output the cross sectional 2012 pscores
+## Notice difference: this is treated BY 2012, above is treated IN 2012
+pscore.2012.csec = as.data.frame(unlist(pscore.2012.csec))
+pscore.2012.csec$NCESDist = check$NCESDist
+colnames(pscore.2012.csec)[1] = "pscore.2012.csec"
+
+write.csv(
+  pscore.2012.csec,
+  "../../data/output/analysis/2012_crossec_pscores.csv"
+)
 
 # Variable Balance -------------------------------------------------------------
-covariates.balance <- c("CEN.Dissim", "Prop.Hisp", "Dist.SFP.Binary", "Dist.RT.FT", "Dist.Stu.Hisp", "Exp.Total.Scaled")
+covariates.balance <- c("CEN.Dissim", "Dist.Stu.Hisp", "Dist.RT.FT", "Dist.SFP.Binary", "Exp.Total.Scaled")
 
 # CEN.Dissim, CEN.Prop.Hisp, Dist.RT.FT, Dist.SFP.Binary, Sum.Win.Hisp.C
 vars.balance = ana.dist %>% dplyr::filter(SY == "2001-02") %>%
@@ -303,13 +326,13 @@ plot(-2, xaxt="n", yaxt="n", xlab="", ylab="", xlim=c(-.01, 1.5), ylim=c(0, pp+1
      main="Propensity Score Balance Comparison: 2012 Treated Cohort",
      sub="Standardized Absolute Mean Differences: 2001-02 School Year")
 abline(v = 0, col = "black", lwd = 1, lty = 1)
-abline(h = seq(1, 6, by=1), lty = 2, col = "grey", lwd=.5)
+abline(h = seq(1, 5, by=1), lty = 2, col = "grey", lwd=.5)
 legend("topright", legend = c("Unadjusted", "Propensity Weighted (After Trimming)"), col=c("red", "blue"), pch=c(16, 19), bty='n', cex=0.8)
 axis(side=1, at=c(0.1, 0.5, 0.75, 1, 1.25, 1.5), las=1)
 axis(side=1, at=c(0), las=1)
 lines(abs.mean.diff / std, seq(1, pp), type="p", col="red", pch=19, cex = 1)
 lines(abs.mean.diff.adj / std.adj, seq(1, pp), type="p", col="blue", pch=19, cex = 0.8)
-mtext(c("Dissmilarity Index", "(Adult) Proportion Hispanic", "Binary SFP Indicator", "(FT) Student-Teacher Ratio", "Hispanic Student Pop", "Expenditure Per Student")
+mtext(c("Dissmilarity Index", "Hispanic Student Pop", "(FT) Student-Teacher Ratio", "Binary SFP Indicator", "Expenditure Per Student")
 , side=2, cex=0.7, at=1:pp, padj=.4, adj=1, col="black", las=1, line=.3)
 dev.off()
 
@@ -321,6 +344,10 @@ pscores <-
     pscore = first(pscore.forced),
     treat.time = first(treat.time)
   )
+
+sum(pscores$pscore > 0)
+hist(pscores$pscore)
+pscores[pscores$treat.time < 16,]$pscore
 
 write.csv(
   pscores,

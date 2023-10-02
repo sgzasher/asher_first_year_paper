@@ -43,7 +43,8 @@ df.mag <-
   ) %>%
   dplyr::select(
     CDSCode, trustee, switcher, switch.type, 
-    Spanish.Surname, Members, Hispanic, year
+    Spanish.Surname, Members, Hispanic, year,
+    propl.18p.foreign.natcit, propl.18p.native, prop.l
   ) %>%
   dplyr::mutate(
     Prop.Board = Spanish.Surname / Members,
@@ -52,8 +53,20 @@ df.mag <-
     )
   ) %>%
   dplyr::select(
-    CDSCode, trustee, switcher, switch.type, causal, year
+    CDSCode, trustee, switcher, switch.type, causal, year,
+    propl.18p.foreign.natcit, propl.18p.native, prop.l
   )
+
+df.mag.2002 = df.mag[df.mag$year == 2002]
+df.mag.2002$propl.18p = df.mag.2002$propl.18p.foreign.natcit + 
+  df.mag.2002$propl.18p.native
+df.mag.2002$propl.voting <- df.mag.2002$propl.18p * df.mag.2002$prop.l
+keep <- unique(df.mag.2002[
+  df.mag.2002$causal == 1 & df.mag.2002$propl.voting < 0.6]$CDSCode)
+
+df.mag = dplyr::select(df.mag, 
+                       CDSCode, trustee, switcher, switch.type, causal, year)
+df.mag$causal = ifelse(df.mag$CDSCode %in% keep, 1, 0)
 
 # Then stitch in NCESDist
 df.mag <- 
@@ -205,6 +218,10 @@ analysis.dist$trustee = ifelse(
 analysis.dist = analysis.dist[,-"trustee.new"]
 
 #### Inclusion indicators ####
+
+# Note we go for trustee = 1 because there are some non-switchers who were just 
+# already trustee at baseline...
+
 analysis.dist$include <- 
   ifelse(
     analysis.dist$causal == 1 & (
@@ -272,7 +289,7 @@ hisp.dist <-
   dplyr::mutate(
     CEN.HighHisp.24 = as.factor(
       ifelse(
-        Hisp > 0.3726,
+        Hisp > 0.3588,
         "Yes",
         "No"
       )
@@ -286,7 +303,7 @@ hisp.dist <-
     ), 
     CEN.Hisp75.24 = as.factor(
       ifelse(
-        Hisp > 0.4504,
+        Hisp > 0.3900,
         "Yes",
         "No"
       )
@@ -346,6 +363,11 @@ analysis.dist <-
 
 # District Level: Write --------------------------------------------------------
 
+# Subset to correct data
+analysis.dist <- 
+  analysis.dist[analysis.dist$NCESDist %in% frame.district$NCESDist]
+
+# Write
 write.csv(
   analysis.dist,
   "../../data/output/analysis/district_regressions.csv"
@@ -567,6 +589,11 @@ analysis.school$include2 <-
 
 
 # School-level Write ---------------------------------------------------------
+
+# Subset to correct data
+analysis.school <- 
+  analysis.school[analysis.school$NCESDist %in% frame.district$NCESDist]
+
 write.csv(
   analysis.school,
   "../../data/output/analysis/school_regressions.csv"

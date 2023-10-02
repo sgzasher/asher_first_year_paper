@@ -56,10 +56,46 @@ trend.winner <-
     HISP.C = mean(HISP.C, na.rm = T)
   )
 
-barplot(trend$HISP.C, names.arg = trend$SY)
-barplot(trend.winner$HISP.C, names.arg = trend$SY)
+
+pdf("../../output/data_section/trend_hispan_cand.pdf", width = 8.6, height = 6)
+barplot(trend$HISP.C, names.arg = trend$SY,
+        main = "Time Trends in Candiate Hispanicity",
+        xlab = "School Year",
+        ylab = "Expected Proportion of Candidates Hispanic")
+dev.off()
+
+pdf("../../output/data_section/trend_hispan_elec.pdf", width = 8.6, height = 6)
+barplot(trend.winner$HISP.C, names.arg = trend$SY,
+        main = "Time Trends in Seat Winner Hispanicity",
+        xlab = "School Year",
+        ylab = "Expected Proportion of Seat Winners Hispanic")
+dev.off()
 
 # Outcome Variables ------------------------------------------------------------
+
+# Function: calculate electoral margin
+margin <- function(raceid, sy){
+  
+  if(sum(is.na(sy)) == 0){
+    df = df.ceda[df.ceda$RaceID == raceid & df.ceda$SY == sy,]
+  }
+  else{
+    df = df.ceda[df.ceda$RaceID == raceid,]
+  }
+  
+  votes = sort(df$CAND.Votes, decreasing = T)
+  k = as.integer(mean(df$ELEC.K, na.rm = T))
+  
+  if(length(votes) > 1){
+    margin = (votes[k] - votes[k+1]) / sum(votes, na.rm = T)
+  }
+  
+  else(
+    margin = 1
+  )
+  
+  return(margin)
+}
 
 # Race level
 outcomes.race <- 
@@ -79,7 +115,10 @@ outcomes.race <-
     Sum.Ran.Hisp.E = sum(HISP.E),
     VS.Hisp.B = sum(CAND.Share * HISP.NALEO),
     VS.Hisp.C = sum(CAND.Share * HISP.C),
-    VS.Hisp.E = sum(CAND.Share * HISP.E)
+    VS.Hisp.E = sum(CAND.Share * HISP.E),
+    Incumbents = sum(CAND.Inc, na.rm = T),
+    VoteTotal = first(ELEC.VoteTotal),
+    Margin = margin(RaceID, SY)
   )
 
 # District level...
