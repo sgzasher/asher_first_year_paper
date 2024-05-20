@@ -60,7 +60,7 @@ df.analysis = left_join(
 
 # Trim for pscores; again balancing stability and power... 
 # (not that I have power)
-df.analysis = df.analysis[df.analysis$pscore.2012.csec > 0.05 & df.analysis$pscore.2012.csec < 0.16]
+df.analysis = df.analysis[df.analysis$pscore.2012.csec > 0.05]
 
 # IPW weight
 df.analysis$IPW = ifelse(

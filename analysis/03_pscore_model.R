@@ -336,6 +336,78 @@ mtext(c("Dissmilarity Index", "Hispanic Student Pop", "(FT) Student-Teacher Rati
 , side=2, cex=0.7, at=1:pp, padj=.4, adj=1, col="black", las=1, line=.3)
 dev.off()
 
+
+# Secondd Balance Plot for Presentation -----------------------------------------
+# Variable Balance -
+covariates.balance <- c("CEN.Dissim", "Dist.Stu.Hisp", "Dist.RT.FT", "G.RT.EL.FT", "Dist.RT.EL.FT", "Exp.Total.Scaled")
+
+# CEN.Dissim, CEN.Prop.Hisp, Dist.RT.FT, Dist.SFP.Binary, Sum.Win.Hisp.C
+vars.balance = ana.dist %>% dplyr::filter(SY == "2001-02") %>%
+  dplyr::select(NCESDist, CEN.Dissim, Prop.Hisp, Dist.RT.FT, G.RT.EL.FT, Dist.RT.EL.FT,
+                include, switcher, Dist.Stu.Hisp, Exp.Total.Scaled)
+
+vars.balance = left_join(vars.balance, pscores[,1:2], by = "NCESDist")
+vars.balance = left_join(vars.balance, pscores.2012, by = "NCESDist")
+vars.balance = left_join(vars.balance, check[,c("NCESDist", "treat.time")], by = "NCESDist")
+vars.balance = vars.balance[vars.balance[["include"]]==1,]
+
+# Relvant units
+vars.balance = vars.balance[
+  vars.balance$treat.time %in% c(13, 16),
+]
+vars.balance$switcher = ifelse(vars.balance$treat.time == 13, 1, 0)
+
+# Variable Balance: Longer 
+
+# Formula
+fmla.balance <- formula(paste("switcher ~ 0 + ",
+                              paste(covariates.balance, 
+                                    collapse="+")))
+
+XX <- model.matrix.lm(fmla.balance, vars.balance, na.action=NULL)
+W <- vars.balance[,"switcher"]
+pp <- ncol(XX)
+
+# Crump trim literal zeros
+vars.balance2 = vars.balance[vars.balance$pscore.2012!=0,]
+
+# Unadjusted covariate means, variances and standardized abs mean differences
+means.treat <- apply(XX[W == 1,], 2, mean, na.rm=TRUE)
+means.ctrl <- apply(XX[W == 0,], 2, mean, na.rm=TRUE)
+abs.mean.diff <- abs(means.treat - means.ctrl)
+
+var.treat <- apply(XX[W == 1,], 2, var, na.rm=TRUE)
+var.ctrl <- apply(XX[W == 0,], 2, var, na.rm=TRUE)
+std <- sqrt(var.treat + var.ctrl)
+
+# Adjusted
+XX.treat <- as.matrix(as.data.frame(apply(XX,2, function(x) x*W/vars.balance2$pscore.2012)))
+XX.control <- as.matrix(as.data.frame(apply(XX,2, function(x) x*(1-W)/(1-vars.balance2$pscore.2012))))
+means.treat.adj <- apply(XX.treat, 2, mean, na.rm=TRUE)
+means.ctrl.adj <- apply(XX.control, 2, mean, na.rm=TRUE)
+abs.mean.diff.adj <- abs(means.treat.adj - means.ctrl.adj)
+
+var.treat.adj <- apply(XX.treat, 2, var, na.rm=TRUE)
+var.ctrl.adj <- apply(XX.control, 2, var, na.rm=TRUE)
+std.adj <- sqrt(var.treat.adj + var.ctrl.adj)
+
+pdf(file = "../../output/pscore_plots/balance_pscore_presentation.pdf", width = 8.6, height = 6)
+par(oma=c(0,4,0,0))
+plot(-2, xaxt="n", yaxt="n", xlab="", ylab="", xlim=c(-.01, 1.5), ylim=c(0, pp+1), 
+     main="Propensity Score Balance Comparison: 2012 Treated Cohort",
+     sub="Standardized Absolute Mean Differences: 2001-02 School Year")
+abline(v = 0, col = "black", lwd = 1, lty = 1)
+abline(h = seq(1, 6, by=1), lty = 2, col = "grey", lwd=.5)
+legend("topright", legend = c("Unadjusted", "Propensity Weighted (After Trimming)"), col=c("red", "blue"), pch=c(16, 19), bty='n', cex=0.8)
+axis(side=1, at=c(0.1, 0.5, 0.75, 1, 1.25, 1.5), las=1)
+axis(side=1, at=c(0), las=1)
+lines(abs.mean.diff / std, seq(1, pp), type="p", col="red", pch=19, cex = 1)
+lines(abs.mean.diff.adj / std.adj, seq(1, pp), type="p", col="blue", pch=19, cex = 0.8)
+mtext(c("Dissmilarity Index", "Hispanic Student Pop", "(FT) Student-Teacher Ratio", "(FT) ST Gini Coef.", "(ELD) Student-Teacher Ratio", "Expenditure Per Student")
+      , side=2, cex=0.7, at=1:pp, padj=.4, adj=1, col="black", las=1, line=.3)
+dev.off()
+
+
 # Return -----------------------------------------------------------------------
 pscores <- 
   pscores %>%

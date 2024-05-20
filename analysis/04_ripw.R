@@ -1119,7 +1119,7 @@ hte.school.plot <- function(outcome, label, legend.pos){
     ) + 
     geom_point(aes(color = status), position = position_dodge(0.1)) + 
     scale_color_manual(name = "District\nHispanicity\n& Segregation", 
-                       values = c("#00AFBB", "#E7B800")) + 
+                       values = c("#E7B800", "#E7B800")) + 
     theme_classic()+ 
     geom_hline(yintercept = 0, linetype = "dashed", color = "black")+ 
     labs(x = "Student Population Hispanicity Relative to District",
@@ -1137,12 +1137,12 @@ hte.school.plot("RT.FT", "Teacher-Student Ratio", c(0.9, 0.2))
 dev.off()
 
 pdf("../../output/ripw_plots_school/sch_ripw_rt_h_ft_low.pdf", width = 8.3, height = 4.9)
-hte.school.plot("RT.H.FT", "Hispanic Teacher-Student Ratio", c(0.9, 0.9))
+hte.school.plot("RT.H.FT", "Hispanic Teacher-Student Ratio", c(0.1, 0.2))
 dev.off()
 
 
 pdf("../../output/ripw_plots_school/sch_ripw_rt_el_ft_low.pdf", width = 8.3, height = 4.9)
-hte.school.plot("RT.EL.FT", "ELD Teacher-Student Ratio", c(0.9, 0.9))
+hte.school.plot("RT.EL.FT", "ELD Teacher-Student Ratio", c(0.1, 0.2))
 dev.off()
           
 
